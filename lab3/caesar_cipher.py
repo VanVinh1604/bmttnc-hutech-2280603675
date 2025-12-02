@@ -1,37 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from ui.caesar import Ui_MainWindow
-
-# Caesar cipher logic
-def caesar_encrypt(text, key):
-    try:
-        shift = int(key) % 26
-    except ValueError:
-        return "Key must be an integer!"
-    result = ""
-    for char in text:
-        if char.isupper():
-            result += chr((ord(char) - 65 + shift) % 26 + 65)
-        elif char.islower():
-            result += chr((ord(char) - 97 + shift) % 26 + 97)
-        else:
-            result += char
-    return result
-
-def caesar_decrypt(text, key):
-    try:
-        shift = int(key) % 26
-    except ValueError:
-        return "Key must be an integer!"
-    result = ""
-    for char in text:
-        if char.isupper():
-            result += chr((ord(char) - 65 - shift) % 26 + 65)
-        elif char.islower():
-            result += chr((ord(char) - 97 - shift) % 26 + 97)
-        else:
-            result += char
-    return result
+import requests
 
 class MyApp(QMainWindow):
     def __init__(self):
@@ -39,31 +9,60 @@ class MyApp(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # Map đúng tên widget trong UI
-        self.ui.pushButton.clicked.connect(self.encrypt_text)
-        self.ui.pushButton_2.clicked.connect(self.decrypt_text)
+        # map đúng tên widget trong UI
+        self.ui.pushButton.clicked.connect(self.call_api_encrypt)       # btn encrypt
+        self.ui.pushButton_2.clicked.connect(self.call_api_decrypt)    # btn decrypt
 
-    def encrypt_text(self):
-        plain_text = self.ui.textEdit.toPlainText()
-        key = self.ui.textEdit_2.toPlainText()
-        cipher_text = caesar_encrypt(plain_text, key)
-        self.ui.textEdit_3.setText(cipher_text)
+    def call_api_encrypt(self):
+        url = "http://127.0.0.1:5000/api/caesar/encrypt"
 
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
-        msg.setText("Encrypted Successfully")
-        msg.exec_()
+        payload = {
+            "plain_text": self.ui.textEdit_2.toPlainText(),   # plain text
+            "key": self.ui.textEdit_4.toPlainText()           # key
+        }
 
-    def decrypt_text(self):
-        cipher_text = self.ui.textEdit_3.toPlainText()
-        key = self.ui.textEdit_2.toPlainText()
-        plain_text = caesar_decrypt(cipher_text, key)
-        self.ui.textEdit.setText(plain_text)
+        try:
+            response = requests.post(url, json=payload)
 
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
-        msg.setText("Decrypted Successfully")
-        msg.exec_()
+            if response.status_code == 200:
+                data = response.json()
+                self.ui.textEdit_3.setText(data["encrypted_message"])  # cipher text
+
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Encrypted Successfully")
+                msg.exec_()
+            else:
+                print("Error:", response.text)
+
+        except requests.exceptions.RequestException as e:
+            print("Request error:", e)
+
+    def call_api_decrypt(self):
+        url = "http://127.0.0.1:5000/api/caesar/decrypt"
+
+        payload = {
+            "cipher_text": self.ui.textEdit_3.toPlainText(),  # cipher text
+            "key": self.ui.textEdit_4.toPlainText()           # key
+        }
+
+        try:
+            response = requests.post(url, json=payload)
+
+            if response.status_code == 200:
+                data = response.json()
+                self.ui.textEdit_2.setText(data["decrypted_message"])  # plain text
+
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Decrypted Successfully")
+                msg.exec_()
+            else:
+                print("Error:", response.text)
+
+        except requests.exceptions.RequestException as e:
+            print("Request error:", e)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
